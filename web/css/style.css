@@ -1,0 +1,520 @@
+/* =========================================================
+   Eco Racing Telemetry: "pit screen" stylesheet
+   ========================================================= */
+
+/* ---------- Fonts (local files, Latin subset) ----------
+   font-display: swap shows fallback text immediately, then swaps
+   in the real font once loaded, so the screen is never blank. */
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("../fonts/barlow-condensed-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("../fonts/barlow-condensed-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../fonts/jetbrains-mono-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---------- Design tokens ----------
+   Red (--fault) is reserved for faults; nothing decorative uses it. */
+:root {
+  --bg:     #0A0A0B;
+  --panel:  #111113;
+  --line:   #232327;
+  --text:   #EDEDED;
+  --muted:  #6E6E75;
+  --accent: #C6FF3D;
+  --warn:   #FFB020;
+  --fault:  #FF3B30;
+
+  --grid:   #17171A;   /* plot grid lines: a hair above --panel */
+
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-mono:    "JetBrains Mono", Consolas, "Courier New", monospace;
+
+  --pad: 24px;          /* inner panel padding: lets the numbers breathe */
+}
+
+/* ---------- Base ---------- */
+* { box-sizing: border-box; border-radius: 0; }
+
+html, body { margin: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  counter-reset: panel;
+}
+
+h2 { margin: 0; font-weight: 500; }
+
+button, select, input { font: inherit; color: inherit; }
+
+/* Shared "label" look: tiny mono caps */
+.label,
+.range,
+.meta,
+.nav-link,
+.field,
+.field-inline,
+.graph-label,
+.badge,
+.btn,
+.stale-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ---------- Header ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+  padding: 14px var(--pad);
+  border-top: 2px solid transparent;   /* turns red in state-fault */
+  border-bottom: 1px solid var(--line);
+}
+
+.brand { display: flex; align-items: center; gap: 14px; }
+
+.brand-logo {
+  width: 34px; height: 34px;
+  display: grid; place-items: center;
+  border: 1px solid var(--text);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+
+.brand-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 24px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.nav { display: flex; gap: 24px; margin-right: auto; }
+
+.nav-link {
+  padding: 4px 0;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+.nav-link:hover  { color: var(--text); }
+.nav-link.active { color: var(--text); border-bottom-color: var(--accent); }
+
+.status-line { display: flex; align-items: center; gap: 24px; }
+
+.live {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; letter-spacing: 0.12em;
+  color: var(--accent);
+}
+.live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.25; }
+}
+
+.meta { color: var(--muted); }
+
+.clock {
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Connection-lost bar: hidden unless state-disconnected */
+.conn-banner {
+  display: none;
+  padding: 8px var(--pad);
+  background: var(--warn);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+/* ---------- Main grid layout ----------
+   Hairline trick: the grid's background is --line and the gap is 1px,
+   so each panel (filled with --panel) is outlined by a 1px "readout" line. */
+.dashboard {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(0, 2fr) minmax(260px, 1fr);
+  grid-template-areas:
+    "sensors graphs side"
+    "log     log    log";
+  gap: 1px;
+  background: var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.area-sensors { grid-area: sensors; }
+.area-graphs  { grid-area: graphs; }
+.area-log     { grid-area: log; }
+.area-side {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;                 /* same hairline trick, vertically */
+  background: var(--line);
+}
+.area-side .panel { flex: 0 0 auto; }
+.area-side .panel:last-child { flex: 1; }
+
+/* ---------- Panels ---------- */
+.panel {
+  background: var(--panel);
+  padding: var(--pad);
+  counter-increment: panel;   /* numbers the titles 01, 02, 03 ... */
+}
+
+.panel-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 20px;
+  font-family: var(--font-display);
+  font-size: 17px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.panel-title::before {
+  content: counter(panel, decimal-leading-zero);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.panel-head .panel-title { margin-bottom: 0; }
+
+.muted { color: var(--muted); margin: 0 0 16px; }
+
+/* ---------- Sensor cards ----------
+   Cards sit in their own hairline grid, edge to edge. */
+.area-sensors { padding-left: 0; padding-right: 0; padding-bottom: 0; }
+.area-sensors .panel-title { padding: 0 var(--pad); }
+
+.sensor-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1px;
+  background: var(--line);
+  border-top: 1px solid var(--line);
+}
+
+.sensor-card {
+  background: var(--panel);
+  padding: 18px var(--pad) 16px;
+}
+
+.card-head { display: flex; justify-content: space-between; align-items: center; }
+.label { color: var(--muted); }
+
+.value {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+.num {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 52px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;   /* fixed-width digits: no jitter */
+}
+.unit {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Gauge: 3px track, fill = --fill, ticks at --lo and --hi */
+.gauge {
+  position: relative;
+  height: 3px;
+  background: var(--line);
+}
+.gauge-fill {
+  width: var(--fill, 0%);
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s linear;
+}
+.tick {
+  position: absolute;
+  top: -4px;
+  width: 1px;
+  height: 11px;
+  background: var(--muted);
+}
+.tick-lo { left: var(--lo, 0%); }
+.tick-hi { left: var(--hi, 100%); }
+
+.range {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.stale-tag {
+  display: none;          /* shown in state-disconnected */
+  padding: 1px 5px;
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  font-size: 9px;
+}
+
+/* ---------- Graph placeholders: instrument plots ----------
+   Two 1px linear-gradients tile into a faint grid:
+   one draws horizontal lines, the other vertical ones. */
+.graph-list { display: flex; flex-direction: column; gap: 12px; }
+
+.graph-box {
+  position: relative;
+  min-height: 118px;
+  border: 1px solid var(--line);
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 100% 25%, 8.333% 100%;
+}
+
+.graph-label {
+  position: absolute;
+  top: 8px; left: 6px;
+  z-index: 1;
+  padding: 0 4px;
+  background: var(--bg);   /* keeps the label readable over grid lines */
+  color: var(--muted);
+}
+.graph-label b { font-weight: 400; color: var(--text); margin-left: 6px; }
+
+/* Dashed threshold lines at --t1 (upper) and --t2 (lower) */
+.threshold {
+  position: absolute;
+  left: 0; right: 0;
+  border-top: 1px dashed var(--muted);
+  opacity: 0.45;
+}
+.t-hi { top: var(--t1, 25%); border-top-color: var(--warn); }
+.t-lo { top: var(--t2, 75%); }
+
+/* ---------- Status badge: [ ● ACTIVE ] ---------- */
+.status-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border: 1px solid currentColor;
+}
+.badge::before {
+  content: "";
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.badge-active { color: var(--accent); }
+
+/* ---------- Buttons: outlined, hover inverts ---------- */
+.btn {
+  padding: 9px 14px;
+  background: transparent;
+  border: 1px solid var(--muted);
+  border-radius: 2px;
+  cursor: pointer;
+  text-align: center;
+}
+.btn:hover:not(:disabled),
+.btn:focus-visible {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  outline: none;
+}
+.btn:disabled {
+  color: var(--muted);
+  border-color: var(--line);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+.btn-primary { border-color: var(--accent); color: var(--accent); width: 100%; }
+.btn-small   { padding: 5px 10px; }
+
+.btn-stack { display: flex; flex-direction: column; gap: 10px; }
+
+/* ---------- Form fields ---------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 18px;
+  color: var(--muted);
+}
+.field-inline { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+
+select,
+input[type="text"] {
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+/* Custom select arrow drawn with two gradient triangles (no image file) */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 30px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+select:focus, input:focus { outline: none; border-color: var(--accent); }
+
+/* ---------- Event log: terminal style ---------- */
+.log-list { margin: 0; padding: 0; list-style: none; }
+
+.log-line {
+  display: grid;
+  grid-template-columns: 9ch 8ch 1fr;   /* time | level | message */
+  gap: 12px;
+  padding: 5px 0;
+  font-variant-numeric: tabular-nums;
+}
+.log-line time { color: var(--muted); }
+.log-line .msg { color: var(--text); }
+.lvl                 { color: var(--muted); }
+.log-warn  .lvl      { color: var(--warn); }
+.log-fault .lvl      { color: var(--fault); }
+
+/* ---------- Log page ---------- */
+.page-single { max-width: 1000px; margin: 0 auto; border-left: 1px solid var(--line); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+
+/* =========================================================
+   STATE HOOKS (switched by the class on <body>)
+   ========================================================= */
+
+/* Fault: red hairline on header; only the faulty card goes red */
+.state-fault .topbar { border-top-color: var(--fault); }
+.state-fault .sensor-card.is-fault .num        { color: var(--fault); }
+.state-fault .sensor-card.is-fault .gauge-fill { background: var(--fault); }
+.state-fault .sensor-card.is-fault .label      { color: var(--fault); }
+
+/* Disconnected: everything goes grey, amber banner + STALE tags */
+.state-disconnected .conn-banner        { display: block; }
+.state-disconnected .stale-tag          { display: inline-block; }
+.state-disconnected .num                { color: var(--muted); }
+.state-disconnected .gauge-fill         { background: var(--muted); }
+.state-disconnected .live               { color: var(--warn); }
+.state-disconnected .live-dot           { animation: none; }
+.state-disconnected .badge-active       { color: var(--muted); }
+
+/* ---------- Temporary dev toggle ---------- */
+.dev-toggle {
+  position: fixed;
+  right: 12px; bottom: 12px;
+  z-index: 100;
+  display: flex;
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+.dev-toggle button {
+  padding: 6px 10px;
+  background: none;
+  border: 0;
+  border-left: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.dev-toggle button:first-child { border-left: 0; }
+.dev-toggle button:hover { color: var(--text); }
+.dev-toggle button.on    { color: var(--bg); background: var(--text); }
+
+/* Respect users who turn off animations */
+@media (prefers-reduced-motion: reduce) {
+  .live-dot { animation: none; }
+  .gauge-fill { transition: none; }
+}
+
+/* =========================================================
+   RESPONSIVE: phones (stack columns; 2-up sensor cards)
+   ========================================================= */
+@media (max-width: 768px) {
+  :root { --pad: 16px; }
+
+  .dashboard {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "sensors"
+      "graphs"
+      "side"
+      "log";
+  }
+
+  .sensor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sensor-card { padding: 14px var(--pad) 12px; }
+  .num { font-size: 36px; }
+
+  .topbar { gap: 12px 20px; }
+  .brand-name { font-size: 20px; }
+  .nav { margin-right: 0; gap: 16px; }
+  .status-line { width: 100%; justify-content: space-between; gap: 12px; }
+  .clock { font-size: 22px; }
+
+  .panel-head { flex-wrap: wrap; }
+  .log-line { grid-template-columns: 9ch 7ch 1fr; gap: 8px; font-size: 12px; }
+}

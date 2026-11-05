@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eco Racing Telemetry</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<!--
+  State class on <body> drives global visual states:
+  "state-ok" (default), "state-fault", "state-disconnected".
+-->
+<body class="state-ok">
+
+  <!-- ===== HEADER ===== -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo" aria-hidden="true">ER</div>
+      <span class="brand-name">Eco Racing Team</span>
+    </div>
+
+    <nav class="nav">
+      <a href="index.html" class="nav-link active">Dashboard</a>
+      <a href="log.html" class="nav-link">Event Log</a>
+    </nav>
+
+    <div class="status-line">
+      <span class="live"><i class="live-dot"></i>LIVE</span>
+      <span class="meta">Last update: <span id="last-update">0.6s</span> ago | <span id="update-rate">1.8 Hz</span></span>
+      <span class="clock" id="clock">14:32:07</span>
+    </div>
+  </header>
+
+  <!-- Shown only in body.state-disconnected -->
+  <div class="conn-banner" role="status">Connection lost</div>
+
+  <!-- ===== MAIN GRID: sensors | graphs | side panel, then log ===== -->
+  <main class="dashboard">
+
+    <!-- Left column: live sensor cards -->
+    <section class="panel area-sensors">
+      <h2 class="panel-title">Live Sensor Data</h2>
+
+      <!-- Each card carries its own numbers as CSS variables:
+           --fill = current value, --lo / --hi = min / max tick positions,
+           all as a percentage of the sensor's range. -->
+      <div class="sensor-grid">
+        <div class="sensor-card" data-sensor="battery_voltage" style="--fill: 80%; --lo: 60%; --hi: 95%">
+          <div class="card-head"><span class="label">Batt Voltage</span><span class="stale-tag">Stale</span></div>
+          <div class="value"><span class="num">48.2</span><span class="unit">V</span></div>
+          <div class="gauge"><div class="gauge-fill"></div><i class="tick tick-lo"></i><i class="tick tick-hi"></i></div>
+          <div class="range"><span>MIN 46.1</span><span>MAX 50.4</span></div>
+        </div>
+
+        <div class="sensor-card" data-sensor="motor_current" style="--fill: 42%; --lo: 0%; --hi: 81%">
+          <div class="card-head"><span class="label">Motor Current</span><span class="stale-tag">Stale</span></div>
+          <div class="value"><span class="num">12.7</span><span class="unit">A</span></div>
+          <div class="gauge"><div class="gauge-fill"></div><i class="tick tick-lo"></i><i class="tick tick-hi"></i></div>
+          <div class="range"><span>MIN 0.0</span><span>MAX 24.3</span></div>
+        </div>
+
+        <!-- Example: this is the card that turns red in the fault preview -->
+        <div class="sensor-card" data-sensor="motor_temp" style="--fill: 70%; --lo: 39%; --hi: 73%">
+          <div class="card-head"><span class="label">Motor Temp</span><span class="stale-tag">Stale</span></div>
+          <div class="value"><span class="num">56.4</span><span class="unit">°C</span></div>
+          <div class="gauge"><div class="gauge-fill"></div><i class="tick tick-lo"></i><i class="tick tick-hi"></i></div>
+          <div class="range"><span>MIN 31.0</span><span>MAX 58.2</span></div>
+        </div>
+
+        <div class="sensor-card" data-sensor="battery_temp" style="--fill: 58%; --lo: 47%; --hi: 59%">
+          <div class="card-head"><span class="label">Batt Temp</span><span class="stale-tag">Stale</span></div>
+          <div class="value"><span class="num">34.9</span><span class="unit">°C</span></div>
+          <div class="gauge"><div class="gauge-fill"></div><i class="tick tick-lo"></i><i class="tick tick-hi"></i></div>
+          <div class="range"><span>MIN 28.5</span><span>MAX 35.6</span></div>
+        </div>
+
+        <div class="sensor-card" data-sensor="wheel_speed" style="--fill: 52%; --lo: 0%; --hi: 80%">
+          <div class="card-head"><span class="label">Wheel Speed</span><span class="stale-tag">Stale</span></div>
+          <div class="value"><span class="num">412</span><span class="unit">RPM</span></div>
+          <div class="gauge"><div class="gauge-fill"></div><i class="tick tick-lo"></i><i class="tick tick-hi"></i></div>
+          <div class="range"><span>MIN 0</span><span>MAX 640</span></div>
+        </div>
+
+        <div class="sensor-card" data-sensor="throttle" style="--fill: 35%; --lo: 0%; --hi: 100%">
+          <div class="card-head"><span class="label">Throttle</span><span class="stale-tag">Stale</span></div>
+          <div class="value"><span class="num">35</span><span class="unit">%</span></div>
+          <div class="gauge"><div class="gauge-fill"></div><i class="tick tick-lo"></i><i class="tick tick-hi"></i></div>
+          <div class="range"><span>MIN 0</span><span>MAX 100</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Middle column: time range + graph placeholders.
+         --t1 / --t2 = vertical position of the dashed threshold lines. -->
+    <section class="panel area-graphs">
+      <div class="panel-head">
+        <h2 class="panel-title">Graphs</h2>
+        <label class="field-inline">
+          Time Range
+          <select id="time-range">
+            <option value="30">Last 30 s</option>
+            <option value="60" selected>Last 1 min</option>
+            <option value="300">Last 5 min</option>
+            <option value="900">Last 15 min</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="graph-list">
+        <div class="graph-box" data-graph="battery_voltage" style="--t1: 20%; --t2: 75%"><span class="graph-label">Batt Voltage <b>V</b></span><i class="threshold t-hi"></i><i class="threshold t-lo"></i></div>
+        <div class="graph-box" data-graph="motor_current" style="--t1: 25%; --t2: 90%"><span class="graph-label">Motor Current <b>A</b></span><i class="threshold t-hi"></i><i class="threshold t-lo"></i></div>
+        <div class="graph-box" data-graph="motor_temp" style="--t1: 30%; --t2: 85%"><span class="graph-label">Motor Temp <b>°C</b></span><i class="threshold t-hi"></i><i class="threshold t-lo"></i></div>
+        <div class="graph-box" data-graph="battery_temp" style="--t1: 30%; --t2: 85%"><span class="graph-label">Batt Temp <b>°C</b></span><i class="threshold t-hi"></i><i class="threshold t-lo"></i></div>
+        <div class="graph-box" data-graph="wheel_speed" style="--t1: 20%; --t2: 95%"><span class="graph-label">Wheel Speed <b>RPM</b></span><i class="threshold t-hi"></i><i class="threshold t-lo"></i></div>
+        <div class="graph-box" data-graph="throttle" style="--t1: 30%; --t2: 95%"><span class="graph-label">Throttle <b>%</b></span><i class="threshold t-hi"></i><i class="threshold t-lo"></i></div>
+      </div>
+    </section>
+
+    <!-- Right column: status, session, settings -->
+    <aside class="area-side">
+      <section class="panel">
+        <h2 class="panel-title">Telemetry Status</h2>
+        <div class="status-row">
+          <span class="badge badge-active" id="telemetry-badge">Active</span>
+          <button class="btn" id="status-refresh" disabled>Refresh</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">Session</h2>
+        <div class="btn-stack">
+          <button class="btn" id="btn-snapshot">SD Snapshot (PDF)</button>
+          <button class="btn" id="btn-clear-session">Clear Session Data</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">Settings</h2>
+        <label class="field">
+          Polling Rate
+          <select id="polling-rate">
+            <option value="0.5">0.5 Hz</option>
+            <option value="1">1 Hz</option>
+            <option value="2" selected>2 Hz</option>
+          </select>
+        </label>
+        <label class="field">
+          Backend IP
+          <input type="text" id="backend-ip" value="192.168.4.1" spellcheck="false">
+        </label>
+        <button class="btn btn-primary" id="settings-refresh">Refresh</button>
+      </section>
+    </aside>
+
+    <!-- Bottom row: event log, spans all columns -->
+    <section class="panel area-log">
+      <div class="panel-head">
+        <h2 class="panel-title">Event Log</h2>
+        <button class="btn btn-small" id="log-clear">Clear</button>
+      </div>
+      <ul class="log-list" id="event-log">
+        <li class="log-line log-info"><time>14:31:58</time><span class="lvl">[INFO]</span><span class="msg">Telemetry session started</span></li>
+        <li class="log-line log-info"><time>14:32:01</time><span class="lvl">[INFO]</span><span class="msg">Connected to ESP32 at 192.168.4.1</span></li>
+        <li class="log-line log-warn"><time>14:32:04</time><span class="lvl">[WARN]</span><span class="msg">Motor temperature above 55 °C</span></li>
+        <li class="log-line log-info"><time>14:32:06</time><span class="lvl">[INFO]</span><span class="msg">Polling rate set to 2 Hz</span></li>
+      </ul>
+    </section>
+
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/dashboard.js"></script>
+  <!-- TEMPORARY: state preview buttons. Delete this line to remove. -->
+  <script src="js/dev-toggle.js"></script>
+</body>
+</html>
