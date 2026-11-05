@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Log · Eco Racing Telemetry</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="state-ok">
+
+  <!-- ===== HEADER (same as dashboard) ===== -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo" aria-hidden="true">ER</div>
+      <span class="brand-name">Eco Racing Team</span>
+    </div>
+
+    <nav class="nav">
+      <a href="index.html" class="nav-link">Dashboard</a>
+      <a href="log.html" class="nav-link active">Event Log</a>
+    </nav>
+
+    <div class="status-line">
+      <span class="live"><i class="live-dot"></i>LIVE</span>
+      <span class="clock" id="clock">14:32:07</span>
+    </div>
+  </header>
+
+  <div class="conn-banner" role="status">Connection lost</div>
+
+  <!-- ===== FULL EVENT LOG (placeholder) ===== -->
+  <main class="page-single">
+    <section class="panel">
+      <div class="panel-head">
+        <h2 class="panel-title">Full Event Log</h2>
+        <button class="btn btn-small" id="log-clear">Clear</button>
+      </div>
+      <p class="muted">Placeholder: the complete session log will be loaded from the ESP32 here.</p>
+      <ul class="log-list log-list-full" id="event-log">
+        <li class="log-line log-info"><time>14:31:58</time><span class="lvl">[INFO]</span><span class="msg">Telemetry session started</span></li>
+        <li class="log-line log-info"><time>14:32:01</time><span class="lvl">[INFO]</span><span class="msg">Connected to ESP32 at 192.168.4.1</span></li>
+        <li class="log-line log-warn"><time>14:32:04</time><span class="lvl">[WARN]</span><span class="msg">Motor temperature above 55 °C</span></li>
+        <li class="log-line log-info"><time>14:32:06</time><span class="lvl">[INFO]</span><span class="msg">Polling rate set to 2 Hz</span></li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="js/api.js"></script>
+  <!-- TEMPORARY: state preview buttons. Delete this line to remove. -->
+  <script src="js/dev-toggle.js"></script>
+</body>
+</html>
