@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Log · Eco Racing Telemetry</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="state-disconnected">
+
+  <!-- ===== HEADER (same as dashboard) ===== -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo" aria-hidden="true">ER</div>
+      <span class="brand-name">Eco Racing Team</span>
+    </div>
+
+    <nav class="nav">
+      <a href="index.html" class="nav-link">Dashboard</a>
+      <a href="log.html" class="nav-link active">Event Log</a>
+    </nav>
+
+    <div class="status-line">
+      <span class="live"><i class="live-dot"></i>LIVE</span>
+      <span class="clock" id="clock">14:32:07</span>
+    </div>
+  </header>
+
+  <div class="conn-banner" role="status">Connection lost</div>
+
+  <!-- ===== FULL EVENT LOG ===== -->
+  <main class="page-single">
+    <section class="panel">
+      <div class="panel-head">
+        <h2 class="panel-title">Full Event Log</h2>
+        <button class="btn btn-small" id="log-clear">Clear</button>
+      </div>
+      <p class="muted">Live backend events for the current telemetry session.</p>
+      <ul class="log-list log-list-full" id="event-log"></ul>
+    </section>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/log.js"></script>
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eco Racing Telemetry</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<!--
+  State class on <body> drives global visual states:
+  "state-ok" (default), "state-fault", "state-disconnected".
+-->
+<body class="state-disconnected">
+
+  <!-- ===== HEADER ===== -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo" aria-hidden="true">ER</div>
+      <span class="brand-name">Eco Racing Team</span>
+    </div>
+
+    <nav class="nav">
+      <a href="index.html" class="nav-link active">Dashboard</a>
+      <a href="log.html" class="nav-link">Event Log</a>
+    </nav>
+
+    <div class="status-line">
+      <span class="live"><i class="live-dot"></i>LIVE</span>
+      <span class="meta">Last source sample: <span id="last-update">never</span> | <span id="update-rate">—</span></span>
+      <span class="clock" id="clock">14:32:07</span>
+    </div>
+  </header>
+
+  <!-- Shown only in body.state-disconnected -->
+  <div class="conn-banner" role="status">Connection lost</div>
+
+  <!-- ===== MAIN GRID: sensors | graphs | side panel, then log ===== -->
+  <main class="dashboard">
+
+    <!-- Left column: live sensor cards -->
+    <section class="panel area-sensors">
+      <h2 class="panel-title">Live Sensor Data</h2>
+
+      <!-- Each card carries its own numbers as CSS variables:
+           --fill = current value, --lo / --hi = min / max tick positions,
+           all as a percentage of the sensor's range. -->
+      <div class="sensor-grid">
+        <div class="sensor-card" data-sensor="battery_voltage" style="--fill: 0%; --lo: 60%; --hi: 95%">
+          <div class="card-head"><span class="label">Batt Voltage</span><span class="stale-tag">Stale</span></div>
+          <div class="value"><span class="num">—</span><span class="unit">V</span></div>
+          <div class="gauge"><div class="gauge-fill"></div><i class="tick tick-lo"></i><i class="tick tick-hi"></i></div>
+          <div class="range"><span>MIN —</span><span>MAX —</span></div>
+        </div>
+
+        <div class="sensor-card" data-sensor="motor_current" style="--fill: 0%; --lo: 0%; --hi: 81%">
+          <div class="card-head"><span class="label">Motor Current</span><span class="stale-tag">Stale</span></div>
+          <div class="value"><span class="num">—</span><span class="unit">A</span></div>
+          <div class="gauge"><div class="gauge-fill"></div><i class="tick tick-lo"></i><i class="tick tick-hi"></i></div>
+          <div class="range"><span>MIN —</span><span>MAX —</span></div>
+        </div>
+
+        <!-- Example: this is the card that turns red in the fault preview -->
+        <div class="sensor-card" data-sensor="motor_temp" style="--fill: 0%; --lo: 39%; --hi: 73%">
+          <div class="card-head"><span class="label">Motor Temp</span><span class="stale-tag">Stale</span></div>
+          <div class="value"><span class="num">—</span><span class="unit">°C</span></div>
+          <div class="gauge"><div class="gauge-fill"></div><i class="tick tick-lo"></i><i class="tick tick-hi"></i></div>
+          <div class="range"><span>MIN —</span><span>MAX —</span></div>
+        </div>
+
+        <div class="sensor-card" data-sensor="battery_temp" style="--fill: 0%; --lo: 47%; --hi: 59%">
+          <div class="card-head"><span class="label">Batt Temp</span><span class="stale-tag">Stale</span></div>
+          <div class="value"><span class="num">—</span><span class="unit">°C</span></div>
+          <div class="gauge"><div class="gauge-fill"></div><i class="tick tick-lo"></i><i class="tick tick-hi"></i></div>
+          <div class="range"><span>MIN —</span><span>MAX —</span></div>
+        </div>
+
+        <div class="sensor-card" data-sensor="wheel_speed" style="--fill: 0%; --lo: 0%; --hi: 80%">
+          <div class="card-head"><span class="label">Wheel Speed</span><span class="stale-tag">Stale</span></div>
+          <div class="value"><span class="num">—</span><span class="unit">RPM</span></div>
+          <div class="gauge"><div class="gauge-fill"></div><i class="tick tick-lo"></i><i class="tick tick-hi"></i></div>
+          <div class="range"><span>MIN —</span><span>MAX —</span></div>
+        </div>
+
+        <div class="sensor-card" data-sensor="throttle" style="--fill: 0%; --lo: 0%; --hi: 100%">
+          <div class="card-head"><span class="label">Throttle</span><span class="stale-tag">Stale</span></div>
+          <div class="value"><span class="num">—</span><span class="unit">%</span></div>
+          <div class="gauge"><div class="gauge-fill"></div><i class="tick tick-lo"></i><i class="tick tick-hi"></i></div>
+          <div class="range"><span>MIN —</span><span>MAX —</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Middle column: time range + telemetry graphs.
+         --t1 / --t2 = vertical position of the dashed threshold lines. -->
+    <section class="panel area-graphs">
+      <div class="panel-head">
+        <h2 class="panel-title">Graphs</h2>
+        <label class="field-inline">
+          Time Range
+          <select id="time-range">
+            <option value="30">Last 30 s</option>
+            <option value="60" selected>Last 1 min</option>
+            <option value="300">Last 5 min</option>
+            <option value="900">Last 15 min</option>
+          </select>
+        </label>
+      </div>
+
+      <details class="variable-picker" open>
+        <summary>Choose variables <span id="graph-count"></span></summary>
+        <div id="variable-list"></div>
+      </details>
+      <p class="graph-help">Auto-scaled Y axes. Hover, tap or drag to inspect; focus a graph and use arrow keys. ○ Minimum · ■ Maximum</p>
+      <p id="graphs-empty" hidden>Select a variable above to display its graph.</p>
+      <div class="graph-list"></div>
+      <noscript>JavaScript is required for live telemetry graphs.</noscript>
+    </section>
+
+    <!-- Right column: status, session, settings -->
+    <aside class="area-side">
+      <section class="panel">
+        <h2 class="panel-title">Telemetry Status</h2>
+        <div class="status-row">
+          <span class="badge badge-active" id="telemetry-badge">Active</span>
+          <button class="btn" id="status-refresh">Refresh</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">Session</h2>
+        <div class="btn-stack">
+          <button class="btn" id="btn-snapshot" disabled title="Snapshot generation is not implemented">SD Snapshot (PDF)</button>
+          <button class="btn" id="btn-clear-session">Clear Session Data</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">Settings</h2>
+        <label class="field">
+          Polling Rate
+          <select id="polling-rate">
+            <option value="0.5">0.5 Hz</option>
+            <option value="1">1 Hz</option>
+            <option value="2" selected>2 Hz</option>
+          </select>
+        </label>
+        <label class="field">
+          Backend URL
+          <input type="text" id="backend-ip" value="" placeholder="Same origin" spellcheck="false">
+        </label>
+        <button class="btn btn-primary" id="settings-refresh">Refresh</button>
+      </section>
+    </aside>
+
+    <!-- Bottom row: event log, spans all columns -->
+    <section class="panel area-log">
+      <div class="panel-head">
+        <h2 class="panel-title">Event Log</h2>
+        <button class="btn btn-small" id="log-clear">Clear</button>
+      </div>
+      <ul class="log-list" id="event-log"></ul>
+    </section>
+
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/telemetry-model.js"></script>
+  <script src="js/graph-model.js"></script>
+  <script src="js/graph-view.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>
