@@ -30,6 +30,8 @@
 /* ---------- Design tokens ----------
    Red (--fault) is reserved for faults; nothing decorative uses it. */
 :root {
+  --plot-text: #A6A6AF;
+  --plot-min: #89CFFF;
   --bg:     #0A0A0B;
   --panel:  #111113;
   --line:   #232327;
@@ -45,6 +47,48 @@
   --font-mono:    "JetBrains Mono", Consolas, "Courier New", monospace;
 
   --pad: 24px;          /* inner panel padding: lets the numbers breathe */
+}
+
+/* Graph inspection and variable selection */
+[hidden] { display: none !important; }
+.area-graphs, .panel, .area-side { min-width: 0; }
+.variable-picker { border: 1px solid var(--line); padding: 12px; margin-bottom: 12px; }
+.variable-picker summary { cursor: pointer; color: var(--text); }
+#graph-count { display: block; color: var(--plot-text); font-size: 11px; margin: 6px 0; }
+.variable-row { display: grid; grid-template-columns: minmax(0, 1fr) 84px 65px; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.variable-row label { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12px; }
+.variable-row input { accent-color: var(--accent); width: 16px; height: 16px; flex: 0 0 auto; }
+.variable-row span { color: var(--plot-text); font-size: 10px; }
+.variable-row button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+.graph-help { color: var(--plot-text); font-size: 11px; margin: 0 0 16px; }
+.graph-list .graph-box { min-height: 0; background-image: none; }
+.graph-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 12px; }
+.graph-heading h3 { margin: 0; font-family: var(--font-display); font-size: 18px; font-weight: 500; }
+.graph-summary { color: var(--accent); font-size: 12px; }
+.graph-surface { position: relative; width: 100%; height: 245px; }
+.graph-surface canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.graph-surface canvas:last-of-type { touch-action: pan-y; cursor: crosshair; }
+.graph-surface canvas:focus-visible { outline: 1px solid var(--accent); outline-offset: -2px; }
+.graph-tooltip { position: absolute; z-index: 3; pointer-events: none; white-space: pre-line; max-width: calc(100% - 8px); overflow-wrap: anywhere; background: var(--panel); border: 1px solid var(--plot-text); color: var(--text); padding: 8px; font-size: 11px; line-height: 1.6; }
+.graph-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 4px 12px 12px; font-size: 11px; color: var(--plot-text); }
+.graph-legend .extreme-min { color: var(--plot-min); }
+.graph-legend .extreme-max { color: var(--warn); }
+.sensor-card .reading-state { display: inline-block; border: 0; color: var(--accent); }
+.sensor-card.sensor-stale .stale-tag { color: var(--warn); }
+.sensor-card.is-fault .stale-tag { color: var(--fault); }
+.sensor-card.is-fault .num, .sensor-card.is-fault .label { color: var(--fault); }
+@media (min-width: 769px) and (max-width: 1199px) {
+  .dashboard { grid-template-columns: 240px minmax(0, 1fr); grid-template-areas: "sensors graphs" "side side" "log log"; }
+  .area-side { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 768px) {
+  .dashboard .area-graphs { padding: 16px 8px; }
+  .graph-surface { height: 230px; }
+  .status-line { flex-wrap: wrap; }
+  .meta { letter-spacing: 0; }
+  .log-line .msg { overflow-wrap: anywhere; min-width: 0; }
+  .variable-row { grid-template-columns: minmax(0, 1fr) 66px 60px; gap: 4px; }
+  .variable-row label { font-size: 11px; }
 }
 
 /* ---------- Base ---------- */
@@ -81,6 +125,8 @@ button, select, input { font: inherit; color: inherit; }
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+.sensor-card.sensor-stale .stale-tag { display: inline-block; }
+.sensor-card.sensor-stale .num { color: var(--muted); }
 
 /* ---------- Header ---------- */
 .topbar {
@@ -305,7 +351,7 @@ button, select, input { font: inherit; color: inherit; }
   font-size: 9px;
 }
 
-/* ---------- Graph placeholders: instrument plots ----------
+/* ---------- Instrument plots ----------
    Two 1px linear-gradients tile into a faint grid:
    one draws horizontal lines, the other vertical ones. */
 .graph-list { display: flex; flex-direction: column; gap: 12px; }
@@ -458,6 +504,13 @@ select:focus, input:focus { outline: none; border-color: var(--accent); }
 .state-fault .sensor-card.is-fault .gauge-fill { background: var(--fault); }
 .state-fault .sensor-card.is-fault .label      { color: var(--fault); }
 
+/* Stale: the API is reachable but no new readings have arrived recently. */
+.state-stale .conn-banner  { display: block; }
+.state-stale .stale-tag    { display: inline-block; }
+.state-stale .live         { color: var(--warn); }
+.state-stale .live-dot     { animation: none; }
+.state-stale .badge-active { color: var(--warn); }
+
 /* Disconnected: everything goes grey, amber banner + STALE tags */
 .state-disconnected .conn-banner        { display: block; }
 .state-disconnected .stale-tag          { display: inline-block; }
@@ -466,30 +519,6 @@ select:focus, input:focus { outline: none; border-color: var(--accent); }
 .state-disconnected .live               { color: var(--warn); }
 .state-disconnected .live-dot           { animation: none; }
 .state-disconnected .badge-active       { color: var(--muted); }
-
-/* ---------- Temporary dev toggle ---------- */
-.dev-toggle {
-  position: fixed;
-  right: 12px; bottom: 12px;
-  z-index: 100;
-  display: flex;
-  border: 1px solid var(--line);
-  background: var(--bg);
-}
-.dev-toggle button {
-  padding: 6px 10px;
-  background: none;
-  border: 0;
-  border-left: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-.dev-toggle button:first-child { border-left: 0; }
-.dev-toggle button:hover { color: var(--text); }
-.dev-toggle button.on    { color: var(--bg); background: var(--text); }
 
 /* Respect users who turn off animations */
 @media (prefers-reduced-motion: reduce) {
